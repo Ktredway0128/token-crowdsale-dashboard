@@ -95,9 +95,6 @@ function App() {
   // Admin withdraw
   const [withdrawAmount, setWithdrawAmount] = useState('');
 
-  // Frozen releasable amounts captured from revoke tx receipt
-  const [revokedAmounts, setRevokedAmounts] = useState({});
-
   // Admin lookup
   const [lookupAddress, setLookupAddress]     = useState('');
   const [lookupSchedules, setLookupSchedules] = useState([]);

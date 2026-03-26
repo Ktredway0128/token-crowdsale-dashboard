@@ -2,6 +2,8 @@
 
 [![Verified on Etherscan](https://img.shields.io/badge/Etherscan-Verified-brightgreen)](https://sepolia.etherscan.io/address/0x81F71D5D73383750C9d4BCe65C493A55BA887ecB#code)
 
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-Netlify-blue)](YOUR_NETLIFY_URL)
+
 ![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
 ![React](https://img.shields.io/badge/React-18-blue)
 ![Ethers.js](https://img.shields.io/badge/Ethers.js-5.8-purple)
