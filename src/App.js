@@ -8,7 +8,7 @@ const VESTING_ADDRESS = sepoliaDeployment.TokenVesting.address;
 const ABI = TokenVestingABI.abi;
 
 const STATUS_COLORS = {
-  create:   { backgroundColor: '#1a5c38', color: '#fff' },
+  create:   { backgroundColor: '#3b82f6', color: '#fff' },
   release:  { backgroundColor: '#84cc16', color: '#fff' },
   revoke:   { backgroundColor: '#6b0f1a', color: '#fff' },
   withdraw: { backgroundColor: '#84cc16', color: '#fff' },
@@ -173,8 +173,10 @@ function App() {
       }
 
       const chainId = await window.ethereum.request({ method: 'eth_chainId' });
-      if (chainId !== '0xaa36a7') {
-        setStatus('Please switch MetaMask to the Sepolia network.');
+      // 0x7a69 = Hardhat localhost (31337) | 0xaa36a7 = Sepolia
+      // Switch back to '0xaa36a7' and 'Sepolia' when deploying to testnet
+      if (chainId !== '0x7a69') {
+        setStatus('Please switch MetaMask to the Hardhat localhost network.');
         setStatusStyle(STATUS_COLORS.error);
         return;
       }
@@ -185,9 +187,10 @@ function App() {
       const _signer  = metaMaskProvider.getSigner();
       const _account = await _signer.getAddress();
 
+      // Hardhat local node — switch back to Alchemy URL for Sepolia deployment
       const alchemyProvider = new ethers.providers.JsonRpcProvider(
-        process.env.REACT_APP_ALCHEMY_URL,
-        { name: 'sepolia', chainId: 11155111 }
+        'http://127.0.0.1:8545',
+        { name: 'hardhat', chainId: 31337 }
       );
 
       const _contract     = new ethers.Contract(VESTING_ADDRESS, ABI, _signer);
@@ -207,12 +210,13 @@ function App() {
   useEffect(() => {
     if (!window.ethereum) return;
     const handleAccountChange = async (accounts) => {
+      // Always clear status and txHash when switching accounts
+      setStatus('');
+      setTxHash('');
       if (accounts.length === 0) {
         setAccount(null);
         setContract(null);
         setReadContract(null);
-        setStatus('');
-        setTxHash('');
         setMySchedules([]);
       } else {
         await connectWallet();
@@ -231,11 +235,11 @@ function App() {
 
       const withdrawableAmt = await _contract.getWithdrawableAmount();
       const totalLockedAmt  = await _contract.vestingSchedulesTotalAmount();
-      const count           = await _contract.vestingSchedulesCount();
+      const activeCount = await _contract.activeSchedulesCount();
 
       setWithdrawable(ethers.utils.formatUnits(withdrawableAmt, 18));
       setTotalLocked(ethers.utils.formatUnits(totalLockedAmt, 18));
-      setScheduleCount(count.toString());
+      setScheduleCount(activeCount.toString());
 
       const holderCount = await _contract.holdersVestingCount(_account);
       const schedules   = [];
@@ -411,7 +415,11 @@ function App() {
       setStatus('Withdrawing tokens...');
       setStatusStyle(STATUS_COLORS.withdraw);
       setIsLoading(true);
-      const tx = await contract.withdraw(ethers.utils.parseUnits(withdrawAmount, 18));
+      // If withdrawing the max amount, use exact contract value to avoid rounding issues
+      const withdrawableExact = await readContract.getWithdrawableAmount();
+      const withdrawAmountParsed = ethers.utils.parseUnits(withdrawAmount, 18);
+      const finalAmount = withdrawAmountParsed.gte(withdrawableExact) ? withdrawableExact : withdrawAmountParsed;
+      const tx = await contract.withdraw(finalAmount);
       await tx.wait();
       await new Promise(resolve => setTimeout(resolve, 2000));
       setIsLoading(false);
@@ -520,11 +528,12 @@ function App() {
           ) : (
             <>
               {/* STATS */}
+              {(isAdmin || mySchedules.some(s => !s.releasable.eq(0))) && (
               <div className={`grid gap-3 mb-8 ${isAdmin ? 'grid-cols-3' : 'grid-cols-2'}`}>
                 {[
                   { label: 'Total Locked',    value: Number(totalLocked).toLocaleString() + ' tokens' },
                   ...(isAdmin ? [{ label: 'Withdrawable', value: Number(withdrawable).toLocaleString() + ' tokens' }] : []),
-                  { label: 'Total Schedules', value: scheduleCount },
+                  { label: 'Active Schedules', value: scheduleCount },
                 ].map((stat) => (
                   <div key={stat.label} className="rounded-2xl p-4 shadow-sm card-hover"
                     style={{
@@ -539,8 +548,10 @@ function App() {
                   </div>
                 ))}
               </div>
+              )}
 
               {/* MY VESTING SCHEDULES */}
+              {(isAdmin || mySchedules.length > 0) && (
               <div className="rounded-2xl p-6 mb-8 shadow-sm card-hover"
                 style={{
                   backgroundColor: 'rgba(255,255,255,0.6)',
@@ -559,7 +570,7 @@ function App() {
                       style={{
                         backgroundColor: 'rgba(255,255,255,0.5)',
                         border: '1px solid rgba(255,255,255,0.8)',
-                        borderLeft: schedule.revoked ? '4px solid #dc2626' : '4px solid #f59e0b',
+                        borderLeft: schedule.revoked ? '4px solid #dc2626' : '4px solid #3b82f6',
                       }}>
 
                       {!schedule.revoked && <VestingProgressBar released={schedule.released} totalAmount={schedule.totalAmount} />}
@@ -573,24 +584,21 @@ function App() {
                           <p className="text-xs uppercase tracking-wide" style={{ color: '#64748b' }}>Released</p>
                           <p className="text-sm font-bold" style={{ color: '#1a5c38' }}>{formatTokens(schedule.released)}</p>
                         </div>
-                        {!schedule.revoked && (
-                          <div>
+                        <div>
                             <p className="text-xs uppercase tracking-wide" style={{ color: '#64748b' }}>Releasable Now</p>
-                            <p className="text-sm font-bold" style={{ color: '#f59e0b' }}>{formatTokens(releasable)}</p>
+                            <p className="text-sm font-bold" style={{ color: '#0f4c5c' }}>{formatTokens(releasable)}</p>
                           </div>
-                        )}
                         <div>
                           <p className="text-xs uppercase tracking-wide" style={{ color: '#64748b' }}>Status</p>
-                          <p className="text-sm font-bold" style={{ color: schedule.revoked ? '#dc2626' : '#22c55e' }}>
-                            {schedule.revoked ? 'Revoked' : 'Active'}
+                          <p className="text-sm font-bold" style={{
+                            color: schedule.revoked ? '#dc2626' :
+                              releasable.add(schedule.released).gte(schedule.totalAmount) ? '#3b82f6' : '#22c55e'
+                          }}>
+                            {schedule.revoked ? 'Revoked' :
+                              releasable.add(schedule.released).gte(schedule.totalAmount) ? 'Vesting Complete' : 'Active'}
                           </p>
                         </div>
                       </div>
-                      {schedule.revoked && (
-                        <p className="text-sm font-semibold mb-3" style={{ color: '#f59e0b' }}>
-                          ↓ Click Release Tokens below for your final claimable balance
-                        </p>
-                      )}
 
                       <div className="grid grid-cols-3 gap-3 mb-3">
                         <div>
@@ -637,6 +645,7 @@ function App() {
                   ))
                 )}
               </div>
+              )}
 
               {/* ADMIN PANEL */}
               {isAdmin && (
@@ -699,7 +708,7 @@ function App() {
                     <button onClick={handleLookup} disabled={lookupLoading || isLoading}
                       className="px-6 py-3 rounded-xl font-semibold text-white transition-all hover:opacity-90 btn-hover"
                       style={{
-                        backgroundColor: '#0f4c5c',
+                        backgroundColor: '#3b82f6',
                         opacity: (lookupLoading || isLoading) ? 0.6 : 1,
                         cursor:  (lookupLoading || isLoading) ? 'not-allowed' : 'pointer',
                       }}>
@@ -716,7 +725,7 @@ function App() {
                           style={{
                             backgroundColor: 'rgba(255,255,255,0.5)',
                             border: '1px solid rgba(255,255,255,0.8)',
-                            borderLeft: schedule.revoked ? '4px solid #dc2626' : '4px solid #f59e0b',
+                            borderLeft: schedule.revoked ? '4px solid #dc2626' : '4px solid #3b82f6',
                           }}>
                           <div className="grid grid-cols-4 gap-3 mb-3">
                             <div>
@@ -729,12 +738,16 @@ function App() {
                             </div>
                             <div>
                               <p className="text-xs uppercase tracking-wide" style={{ color: '#64748b' }}>Releasable Now</p>
-                              <p className="text-sm font-bold" style={{ color: '#f59e0b' }}>{formatTokens(releasable)}</p>
+                              <p className="text-sm font-bold" style={{ color: '#0f4c5c' }}>{formatTokens(releasable)}</p>
                             </div>
                             <div>
                               <p className="text-xs uppercase tracking-wide" style={{ color: '#64748b' }}>Status</p>
-                              <p className="text-sm font-bold" style={{ color: schedule.revoked ? '#dc2626' : '#22c55e' }}>
-                                {schedule.revoked ? 'Revoked' : 'Active'}
+                              <p className="text-sm font-bold" style={{
+                                color: schedule.revoked ? '#dc2626' :
+                                  releasable.add(schedule.released).gte(schedule.totalAmount) ? '#3b82f6' : '#22c55e'
+                              }}>
+                                {schedule.revoked ? 'Revoked' :
+                                  releasable.add(schedule.released).gte(schedule.totalAmount) ? 'Vesting Complete' : 'Active'}
                               </p>
                             </div>
                           </div>
@@ -785,6 +798,17 @@ function App() {
                         cursor:  isLoading ? 'not-allowed' : 'pointer',
                       }}>
                       Withdraw
+                    </button>
+                    <button
+                      onClick={() => setWithdrawAmount(withdrawable)}
+                      disabled={isLoading}
+                      className="px-4 py-3 rounded-xl font-semibold text-white transition-all hover:opacity-90 btn-hover"
+                      style={{
+                        backgroundColor: '#3b82f6',
+                        opacity: isLoading ? 0.6 : 1,
+                        cursor: isLoading ? 'not-allowed' : 'pointer',
+                      }}>
+                      Max
                     </button>
                   </div>
                 </div>
