@@ -366,23 +366,6 @@ function App() {
       setIsLoading(true);
       const tx = await contract.revoke(vestingId);
       const receipt = await tx.wait();
-      // Parse VestingRevoked event directly from the receipt — no log range limits
-      const iface = new ethers.utils.Interface([
-        'event VestingRevoked(bytes32 vestingId, address beneficiary, uint256 returnedAmount)'
-      ]);
-      for (const log of receipt.logs) {
-        try {
-          const parsed = iface.parseLog(log);
-          if (parsed.name === 'VestingRevoked' && parsed.args.vestingId === vestingId) {
-            // totalAmount - returnedAmount = vested at revocation
-            // We store this keyed by vestingId so the display can use it
-            const schedule = await readContract.getVestingSchedule(vestingId);
-            const vestedAtRevoke = schedule.totalAmount.sub(parsed.args.returnedAmount).sub(schedule.released);
-
-            break;
-          }
-        } catch {}
-      }
       await new Promise(resolve => setTimeout(resolve, 2000));
       setIsLoading(false);
       setTxHash(tx.hash);
