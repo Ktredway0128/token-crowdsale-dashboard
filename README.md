@@ -1,8 +1,6 @@
-# ERC-20 TOKEN VESTING DASHBOARD
+# ERC-20 TOKEN AIRDROP DASHBOARD
 
-[![Verified on Etherscan](https://img.shields.io/badge/Etherscan-Verified-brightgreen)](https://sepolia.etherscan.io/address/0x81F71D5D73383750C9d4BCe65C493A55BA887ecB#code)
-
-[![Live Demo](https://img.shields.io/badge/Live%20Demo-Netlify-blue)](https://erc20-vesting-dashboard.netlify.app/)
+[![Verified on Etherscan](https://img.shields.io/badge/Etherscan-Verified-brightgreen)](https://sepolia.etherscan.io/address/0x1e79DE344A8B99CAF74E60dc1bD7cCE26e9f5524#code)
 
 ![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
 ![React](https://img.shields.io/badge/React-18-blue)
@@ -11,31 +9,33 @@
 
 Built by [Kyle Tredway Development](https://kyle-tredway-portfolio.netlify.app/) — professional Solidity smart contract packages for Web3 companies.
 
-A production-ready React frontend for interacting with a deployed ERC-20 token vesting contract.
+A production-ready React frontend for interacting with a deployed ERC-20 Merkle airdrop contract.
 
 > ⚠️ This dashboard is connected to the Sepolia test network for demonstration purposes only.
 > These contracts have not been professionally audited. A full security audit is strongly recommended before any mainnet deployment.
 
-This project demonstrates the full lifecycle of a token vesting management dashboard including:
+This project demonstrates the full lifecycle of a Merkle airdrop management dashboard including:
 
 - Wallet connection and network validation
-- Real-time vesting schedule data loaded from the blockchain
+- Real-time airdrop data loaded from the blockchain
+- Merkle proof verification handled automatically behind the scenes
 - Role-based admin controls
 - Transaction feedback with Etherscan verification
 
-The repository represents the frontend layer of an ERC-20 Token Vesting package, designed to work alongside the ERC-20 Token Launch Contract and ERC-20 Token Vesting Contract.
+The repository represents the frontend layer of an ERC-20 Merkle Airdrop package, designed to work alongside the ERC-20 Token Launch Contract and ERC-20 Token Vesting Contract as part of the full Dominate package.
 
 
 ## PROJECT GOALS
 
-The purpose of this project is to demonstrate how a modern token vesting dashboard should be designed for real-world use.
+The purpose of this project is to demonstrate how a modern Merkle airdrop dashboard should be designed for real-world use.
 
-The dashboard includes common features required by token vesting interfaces:
+The dashboard includes common features required by token airdrop interfaces:
 
-- Live vesting schedule data loaded from the blockchain
+- Live airdrop data loaded from the blockchain
+- Automatic Merkle proof lookup by connected wallet address
 - Wallet-based role detection
 - Protected admin functions
-- Beneficiary schedule visibility with real-time progress tracking
+- Live countdown timer showing exact time remaining to claim
 - User-friendly transaction status and error handling
 - Etherscan transaction verification
 
@@ -50,67 +50,58 @@ The dashboard connects to MetaMask and automatically detects the connected walle
 A network check ensures the user is on the correct chain before connecting.
 The UI refreshes automatically when the wallet is switched inside MetaMask.
 
-### LIVE VESTING DATA
+### LIVE AIRDROP DATA
 
 On connection, the dashboard loads the following data directly from the contract:
 
-- Total Locked — tokens currently locked across all active vesting schedules
-- Withdrawable — tokens in the contract not assigned to any schedule (admin only)
-- Active Schedules — number of currently active vesting schedules
+- Contract Balance — tokens currently held in the airdrop contract
+- Total Claimed — total tokens claimed across all wallets so far
+- Claim Deadline — live countdown showing exact time remaining to claim
 
-### MY VESTING SCHEDULES
+### MY AIRDROP STATUS
 
-Beneficiaries can view all of their vesting schedules including:
+The dashboard automatically checks the connected wallet against the whitelist and displays one of four states:
 
-- Total Amount — total tokens in the schedule
-- Released — tokens already claimed
-- Releasable Now — tokens available to claim at this moment
-- Status — Active, Vesting Complete, or Revoked
-- Start Date, Cliff Date, and End Date
-- Claimed Progress bar showing percentage of tokens claimed
+| State | Description |
+|-------|-------------|
+| ✓ Eligible | Wallet is on the whitelist and can claim |
+| ✓ Airdrop Claimed | Wallet has already successfully claimed |
+| ❌ Not Eligible | Wallet is not on the airdrop whitelist |
+| ⚠️ Claim Period Ended | Wallet was eligible but the deadline has passed |
 
-### RELEASE TOKENS
+### CLAIM TOKENS
 
-Beneficiaries can claim their vested tokens at any time after the cliff period.
-The Release Tokens button is disabled when no tokens are available.
-After all tokens are claimed the button grays out permanently.
-After full vesting the status changes to **Vesting Complete**.
+Eligible wallets can claim their full allocation in one click. The Merkle proof is looked up automatically from the bundled proofs file — users never need to handle proofs themselves. The claim button is disabled when the airdrop is paused or after the deadline passes.
 
 ### ROLE-BASED ADMIN PANEL
 
-The admin panel is only visible to wallets holding the ADMIN_ROLE.
-Non-admin wallets see only their own vesting schedules.
+The admin panel is only visible to wallets holding the ADMIN_ROLE or PAUSER_ROLE.
+Non-admin wallets see only their own airdrop status.
 
 Admin functions include:
 
 | Function | Description |
 |----------|-------------|
-| Create Vesting Schedule | Create a new schedule for any beneficiary address |
-| Lookup & Revoke | Look up any wallet's schedules and revoke if needed |
-| Withdraw Unlocked Tokens | Withdraw unallocated tokens from the contract |
+| Update Merkle Root | Update the on-chain whitelist with a new Merkle root |
+| Update Claim Deadline | Extend the airdrop deadline to a future date |
+| Recover Unclaimed Tokens | Recover all remaining tokens after the deadline passes |
+| Pause / Unpause Airdrop | Temporarily halt or resume all claims |
 
-### CREATE VESTING SCHEDULE
+### UPDATE MERKLE ROOT
 
-Admins can create schedules with the following parameters:
+When a client wants to add new wallets to the whitelist:
+1. Update `whitelist.json` with new addresses and amounts
+2. Run `node scripts/generate-merkle.js` to get a new Merkle root and `proofs.json`
+3. Paste the new Merkle root into the Update Merkle Root field
+4. Update `proofs.json` in the dashboard and redeploy
 
-- Beneficiary address
-- Token amount
-- Start date
-- Cliff period in days
-- Vesting duration in days
+### RECOVER UNCLAIMED TOKENS
 
-### LOOKUP & REVOKE
+After the claim deadline passes, the admin can recover all remaining unclaimed tokens back to their wallet. The Recover Tokens button is disabled until the deadline has passed and grays out once the contract balance reaches zero.
 
-Admins can look up any beneficiary wallet address to view their schedules.
-Each active schedule shows full details and a Revoke button.
-Revoking immediately decrements the Active Schedules counter.
-Unvested tokens are returned to the contract upon revocation.
-The beneficiary retains the right to claim any tokens vested before revocation.
+### PAUSE / UNPAUSE
 
-### WITHDRAW UNLOCKED TOKENS
-
-Admins can withdraw tokens not locked in any active vesting schedule.
-A **Max** button auto-fills the exact withdrawable amount from the contract to avoid rounding issues.
+The airdrop can be paused at any time to temporarily halt all claims. This is useful when updating the whitelist or responding to an emergency. The button turns green when paused to resume, and amber when active to pause.
 
 ### TRANSACTION FEEDBACK
 
@@ -118,10 +109,11 @@ Every action triggers a color-coded status bar with a loading spinner:
 
 | Action | Status Color |
 |--------|-------------|
-| Creating Schedule | Electric Blue |
-| Releasing Tokens | Lime Green |
-| Revoking Schedule | Dark Red |
-| Withdrawing | Lime Green |
+| Claiming Tokens | Lime Green |
+| Updating Merkle Root | Electric Purple |
+| Updating Deadline | Electric Purple |
+| Recovering Tokens | Dark Red |
+| Pausing / Unpausing | Amber |
 | Success | Bright Green |
 | Error | Red |
 
@@ -133,10 +125,12 @@ User-friendly error messages are displayed for common failure cases:
 
 - Transaction rejected in MetaMask
 - Insufficient funds
-- Not enough tokens in contract
-- Only beneficiary can release
-- No tokens available to release
-- Schedule already revoked
+- Airdrop claim period has ended
+- Wallet has already claimed
+- Invalid Merkle proof
+- Airdrop has not ended yet
+- No tokens to recover
+- Deadline must be in the future
 - General transaction failure
 
 
@@ -149,6 +143,8 @@ This project was built using the following tools:
 - MetaMask – Wallet provider
 - Alchemy – Ethereum RPC provider for reads
 - Tailwind CSS – Utility-first styling
+- merkletreejs – Merkle tree generation library
+- keccak256 – Hashing library for Merkle leaves
 - Sepolia Test Network – Deployment environment
 
 
@@ -159,9 +155,21 @@ src/
     App.js
     App.css
     index.js
+    proofs.json
     contracts/
-        TokenVesting.json
+        TokenAirdrop.json
         sepolia.json
+
+merkle/
+    whitelist.json
+    proofs.json
+    merkle-root.json
+
+scripts/
+    generate-merkle.js
+    deploy-token.js
+    deploy-airdrop.js
+    fund-airdrop.js
 
 public/
     index.html
@@ -173,9 +181,17 @@ public/
 
 Contains all wallet connection logic, contract interaction, and UI rendering.
 
-### CONTRACTS
+### PROOFS.JSON
 
-Contains the ABI and deployed contract address pulled in at runtime.
+Contains the Merkle proof for every whitelisted wallet address. Bundled into the dashboard at build time. The dashboard automatically looks up the connected wallet's proof — users never interact with proofs directly.
+
+### MERKLE FOLDER
+
+Contains the whitelist input file, generated proofs, and Merkle root used during deployment and updates.
+
+### SCRIPTS
+
+Contains the Merkle tree generation script and deployment scripts.
 
 ### ENV
 
@@ -187,8 +203,8 @@ Contains the Alchemy RPC URL used for all read operations.
 ### CLONE THE REPOSITORY:
 
 ```bash
-git clone https://github.com/Ktredway0128/erc20-vesting-dashboard
-cd erc20-vesting-dashboard
+git clone https://github.com/Ktredway0128/erc20-airdrop-dashboard
+cd erc20-airdrop-dashboard
 ```
 
 ### INSTALL DEPENDENCIES:
@@ -214,8 +230,42 @@ REACT_APP_ALCHEMY_URL=YOUR_SEPOLIA_ALCHEMY_URL
 
 This value allows the dashboard to:
 
-- Read vesting data directly from the blockchain via Alchemy
+- Read airdrop data directly from the blockchain via Alchemy
 - Bypass MetaMask's RPC for all read operations
+
+
+## MERKLE TREE WORKFLOW
+
+The airdrop uses a Merkle tree to verify eligibility without storing all addresses on-chain.
+
+### STEP 1 — Define the whitelist:
+
+Edit `merkle/whitelist.json` with wallet addresses and token amounts:
+
+```json
+[
+    { "address": "0xAbc...", "amount": "500" },
+    { "address": "0xDef...", "amount": "1000" }
+]
+```
+
+### STEP 2 — Generate the Merkle tree:
+
+```bash
+node scripts/generate-merkle.js
+```
+
+This outputs `merkle/merkle-root.json` and `merkle/proofs.json`.
+
+### STEP 3 — Deploy the contract:
+
+```bash
+npx hardhat run scripts/deploy-airdrop.js --network sepolia
+```
+
+### STEP 4 — Copy proofs to the dashboard:
+
+Copy `merkle/proofs.json` into `src/proofs.json` and redeploy the dashboard.
 
 
 ## HOW TO USE
@@ -227,40 +277,29 @@ This value allows the dashboard to:
 3. Click **Connect Wallet**
 4. Approve the connection in MetaMask
 
-### VIEWING YOUR VESTING SCHEDULE (Beneficiary)
+### CLAIMING YOUR AIRDROP (Eligible Wallet)
 
-1. Connect with the wallet that has an active vesting schedule
-2. Your schedules will load automatically under **My Vesting Schedules**
-3. Hit **↻ Refresh** at any time to see the latest releasable amount
-
-### RELEASING TOKENS (Beneficiary)
-
-1. Connect with your beneficiary wallet
-2. Click **Release Tokens** when tokens are available
-3. Confirm the transaction in MetaMask
-4. Your tokens will appear in your wallet after confirmation
-
-### CREATING A VESTING SCHEDULE (Admin Only)
-
-1. Connect with a wallet that holds the ADMIN_ROLE
-2. In the Admin Panel, fill in the beneficiary address, token amount, start date, cliff period, and duration
-3. Click **Create Schedule**
+1. Connect with an eligible wallet
+2. Your allocation and time remaining will display automatically
+3. Click **Claim X STK**
 4. Confirm the transaction in MetaMask
+5. Your tokens will appear in your wallet after confirmation
 
-### REVOKING A SCHEDULE (Admin Only)
+### UPDATING THE WHITELIST (Admin Only)
 
-1. Connect with a wallet that holds the ADMIN_ROLE
-2. In the **Lookup & Revoke** section, enter the beneficiary wallet address
-3. Click **Look Up** to load their schedules
-4. Click **Revoke** on the schedule you want to cancel
-5. Confirm the transaction in MetaMask
+1. Add new addresses to `merkle/whitelist.json`
+2. Run `node scripts/generate-merkle.js`
+3. Pause the airdrop in the Admin Panel
+4. Paste the new Merkle root into **Update Merkle Root** and confirm
+5. Copy new `merkle/proofs.json` into `src/proofs.json` and redeploy the dashboard
+6. Unpause the airdrop
 
-### WITHDRAWING TOKENS (Admin Only)
+### RECOVERING TOKENS (Admin Only)
 
-1. Connect with a wallet that holds the ADMIN_ROLE
-2. Enter an amount or click **Max** to fill the exact withdrawable amount
-3. Click **Withdraw**
-4. Confirm the transaction in MetaMask
+1. Wait for the claim deadline to pass
+2. Connect with the admin wallet
+3. Click **Recover Tokens** — all remaining tokens are sent to the admin wallet
+4. The button automatically grays out once the contract balance reaches zero
 
 
 ## PROVIDER ARCHITECTURE
@@ -280,9 +319,11 @@ This separation ensures reads are fast and reliable while writes are always sign
 | Contract | Address | Etherscan |
 |----------|---------|-----------|
 | SampleToken | `0x036150039c33b1645080a9c913f96D4c65ccca48` | [View on Etherscan](https://sepolia.etherscan.io/address/0x036150039c33b1645080a9c913f96D4c65ccca48#code) |
-| TokenVesting | `0x81F71D5D73383750C9d4BCe65C493A55BA887ecB` | [View on Etherscan](https://sepolia.etherscan.io/address/0x81F71D5D73383750C9d4BCe65C493A55BA887ecB#code) |
+| TokenAirdrop | `0x1e79DE344A8B99CAF74E60dc1bD7cCE26e9f5524` | [View on Etherscan](https://sepolia.etherscan.io/address/0x1e79DE344A8B99CAF74E60dc1bD7cCE26e9f5524#code) |
 
-Deployed: 2026-03-26
+Deployed: 2026-03-19
+
+Merkle Root: `0x4b5c2800591b44919b0eadb6c6e42d649e0694a805266ae22df72091daafe0c6`
 
 
 ## EXAMPLE TOKEN CONFIGURATION
@@ -303,35 +344,37 @@ The dashboard enforces security at two levels:
 - Admin panel is hidden from non-admin wallets
 - Network check prevents connection on wrong chain
 - Input validation prevents invalid transactions
-- Beneficiaries can only see and interact with their own schedules
+- Merkle proofs are verified on-chain — the dashboard cannot fabricate eligibility
 
 **Contract Level**
 - All role checks are enforced by the smart contract
 - The UI is a convenience layer — the contract is the source of truth
 - No transaction can bypass the contract's access control
-- Vested amount is frozen at revocation time on-chain — cannot be manipulated by the UI
+- Double claim protection prevents any wallet from claiming more than once
+- Merkle proof verification ensures only whitelisted wallets can claim
 
 
 ## EXAMPLE USE CASES
 
 This dashboard architecture can support many types of projects:
 
-- Employee token compensation plans
-- Investor token lockup agreements
-- Founder and advisor vesting schedules
-- DAO contributor token grants
-- Startup equity token systems
+- Community token airdrops for early users and contributors
+- DAO governance token distribution
+- Startup equity token launches
+- Game economy token distributions
+- DeFi protocol token distributions
+- Loyalty rewards programs
 
 
 ## FUTURE ENHANCEMENTS
 
-This dashboard serves as the second frontend layer in a larger Web3 infrastructure package.
+This dashboard serves as the third frontend layer in a larger Web3 infrastructure package.
 
 Possible upgrades include:
 
-- Airdrop dashboard integration
-- Active beneficiary list for admins
-- Vesting schedule completion notifications
+- IPFS-hosted proofs for very large whitelists
+- Active claimant list for admins
+- Claim analytics and reporting
 - Multi-wallet admin management
 - Mainnet deployment
 
