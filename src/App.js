@@ -399,7 +399,7 @@ function App() {
               <div className="mb-6 text-6xl">🪂</div>
               <button onClick={connectWallet}
                 className="px-8 py-4 rounded-xl font-semibold text-white text-lg transition-all hover:opacity-90 mb-6 btn-hover"
-                style={{ backgroundColor: '#84cc16' }}>
+                style={{ backgroundColor: '#7c3aed' }}>
                 Connect Wallet
               </button>
               <p className="text-3xl font-bold mb-3 tracking-tight" style={{ color: '#0f4c5c' }}>
