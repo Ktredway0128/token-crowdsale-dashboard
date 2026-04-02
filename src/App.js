@@ -341,7 +341,19 @@ function App() {
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       <div className="shimmer-bg"></div>
       <div className="content min-h-screen p-8">
-        <div className="max-w-5xl mx-auto">
+        <div className="max-w-5xl mx-auto" style={{ position: 'relative' }}>
+
+          {/* TD LOGO */}
+          <img 
+              src="/td-logo-justtd.png" 
+              alt="Tredway Development" 
+              style={{ 
+                  position: 'absolute',
+                  top: '0',
+                  left: '-110px',
+                  height: '35px',
+              }} 
+          />
 
           {/* HEADER */}
           <div className="flex justify-between items-center mb-6">
