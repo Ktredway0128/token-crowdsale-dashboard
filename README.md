@@ -1,45 +1,50 @@
-# ERC-20 TOKEN AIRDROP DASHBOARD
+# ERC-20 TOKEN CROWDSALE DASHBOARD
 
-[![Verified on Etherscan](https://img.shields.io/badge/Etherscan-Verified-brightgreen)](https://sepolia.etherscan.io/address/0x1e79DE344A8B99CAF74E60dc1bD7cCE26e9f5524#code)
+[![Verified on Etherscan](https://img.shields.io/badge/Etherscan-Verified-brightgreen)](https://sepolia.etherscan.io/address/0xb19f657E2CB2ea593a348285230D3827c85Ae3c5#code)
 
 ![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
 ![React](https://img.shields.io/badge/React-18-blue)
 ![Ethers.js](https://img.shields.io/badge/Ethers.js-5.8-purple)
 ![Network](https://img.shields.io/badge/Network-Sepolia-green)
 
-Built by [Kyle Tredway Development](https://kyle-tredway-portfolio.netlify.app/) — professional Solidity smart contract packages for Web3 companies.
+Built by [Tredway Development](https://kyle-tredway-portfolio.netlify.app/) — professional Solidity smart contract packages for Web3 companies.
 
-A production-ready React frontend for interacting with a deployed ERC-20 Merkle airdrop contract.
+A production-ready React frontend for interacting with a deployed ERC-20 token crowdsale contract.
 
 > ⚠️ This dashboard is connected to the Sepolia test network for demonstration purposes only.
 > These contracts have not been professionally audited. A full security audit is strongly recommended before any mainnet deployment.
 
-This project demonstrates the full lifecycle of a Merkle airdrop management dashboard including:
+This project demonstrates the full lifecycle of a token crowdsale management dashboard including:
 
 - Wallet connection and network validation
-- Real-time airdrop data loaded from the blockchain
+- Real-time sale data loaded from the blockchain
 - Merkle proof verification handled automatically behind the scenes
+- ETH-based token purchases with live progress tracking
+- Purchaser vesting with cliff period enforcement
+- Soft cap and hard cap monitoring
+- Refund claiming on failed raises
 - Role-based admin controls
 - Transaction feedback with Etherscan verification
 
-The repository represents the frontend layer of an ERC-20 Merkle Airdrop package, designed to work alongside the ERC-20 Token Launch Contract and ERC-20 Token Vesting Contract as part of the full Dominate package.
+The repository represents the frontend layer of an ERC-20 Token Crowdsale package, designed to work alongside the ERC-20 Token Launch Contract as part of the full infrastructure suite.
 
 
 ## PROJECT GOALS
 
-The purpose of this project is to demonstrate how a modern Merkle airdrop dashboard should be designed for real-world use.
+The purpose of this project is to demonstrate how a modern token crowdsale dashboard should be designed for real-world use.
 
-The dashboard includes common features required by token airdrop interfaces:
+The dashboard includes common features required by token sale interfaces:
 
-- Live airdrop data loaded from the blockchain
+- Live sale data loaded from the blockchain
 - Automatic Merkle proof lookup by connected wallet address
+- Real-time raise progress bar with soft cap and hard cap indicators
 - Wallet-based role detection
 - Protected admin functions
-- Live countdown timer showing exact time remaining to claim
+- Purchaser vesting tracking with cliff period display
 - User-friendly transaction status and error handling
 - Etherscan transaction verification
 
-These patterns are widely used in production Web3 applications.
+These patterns are widely used in production Web3 token launches.
 
 
 ## DASHBOARD FEATURES
@@ -50,58 +55,86 @@ The dashboard connects to MetaMask and automatically detects the connected walle
 A network check ensures the user is on the correct chain before connecting.
 The UI refreshes automatically when the wallet is switched inside MetaMask.
 
-### LIVE AIRDROP DATA
+### LIVE SALE DATA
 
 On connection, the dashboard loads the following data directly from the contract:
 
-- Contract Balance — tokens currently held in the airdrop contract
-- Total Claimed — total tokens claimed across all wallets so far
-- Claim Deadline — live countdown showing exact time remaining to claim
+- Total Raised — ETH raised so far across all buyers
+- Cap — soft cap and hard cap displayed together
+- Token Pool — tokens currently held in the crowdsale contract
+- Total Tokens Sold — total tokens distributed to buyers so far
+- My Tokens — tokens purchased by the connected wallet
 
-### MY AIRDROP STATUS
+### SALE PROGRESS CARD
 
-The dashboard automatically checks the connected wallet against the whitelist and displays one of four states:
+The sale progress card shows the current sale state and raise progress:
 
-| State | Description |
+- Sale Status — Not Started, Active with live countdown, Ended, or Finalized
+- End Date — when the sale period closes
+- Raise Progress — visual progress bar showing ETH raised toward the hard cap
+- Soft Cap indicator — updates to ✓ Reached when the soft cap is hit
+- Hard Cap indicator — updates to ✓ Reached when the hard cap is hit
+- Rate — tokens per ETH displayed inline
+
+### SALE DETAILS CARD
+
+A static reference card showing all sale parameters:
+
+- Sale Duration
+- Minimum Contribution
+- Maximum Contribution
+- Cliff Period
+- Vesting Duration
+
+### BUY TOKENS
+
+Whitelisted wallets can purchase tokens during an active sale. The buyer enters an ETH amount and submits a single transaction — no prior token approval is required. The Merkle proof is looked up automatically from the bundled proofs file. The buy button is disabled when the sale is paused or inactive.
+
+### MY POSITION
+
+After purchasing, the My Position card appears showing the buyer's full status:
+
+| Field | Description |
 |-------|-------------|
-| ✓ Eligible | Wallet is on the whitelist and can claim |
-| ✓ Airdrop Claimed | Wallet has already successfully claimed |
-| ❌ Not Eligible | Wallet is not on the airdrop whitelist |
-| ⚠️ Claim Period Ended | Wallet was eligible but the deadline has passed |
+| My Contribution | Total ETH contributed by this wallet |
+| Tokens Purchased | Total tokens bought across all purchases |
+| Tokens Claimed | Tokens already claimed from vesting |
+| Claimable Now | Tokens currently available to claim |
+
+A vesting explanation is shown below the stats reminding the buyer of their cliff period and vesting duration. After the sale is finalized buyers can claim tokens as they vest or claim a refund if the soft cap was not reached.
 
 ### CLAIM TOKENS
 
-Eligible wallets can claim their full allocation in one click. The Merkle proof is looked up automatically from the bundled proofs file — users never need to handle proofs themselves. The claim button is disabled when the airdrop is paused or after the deadline passes.
+After the sale is finalized and the soft cap was reached, buyers can claim their vested tokens. Tokens vest linearly over the vesting duration starting from the buyer's individual purchase timestamp. The cliff period must pass before any tokens become claimable. Buyers can claim multiple times as additional tokens vest over time.
+
+### CLAIM REFUND
+
+If the soft cap was not reached after finalization, buyers can claim a full ETH refund. The refund button shows the exact ETH amount to be returned. Each wallet can only claim its refund once.
+
+### NOT WHITELISTED
+
+If a wallet connects during an active sale but is not on the whitelist, a clear Not Whitelisted message is shown and the buy interface is hidden.
 
 ### ROLE-BASED ADMIN PANEL
 
-The admin panel is only visible to wallets holding the ADMIN_ROLE or PAUSER_ROLE.
-Non-admin wallets see only their own airdrop status.
+The admin panel is only visible to wallets holding the ADMIN_ROLE. Non-admin wallets see only their own purchase status.
 
 Admin functions include:
 
 | Function | Description |
 |----------|-------------|
-| Update Merkle Root | Update the on-chain whitelist with a new Merkle root |
-| Update Claim Deadline | Extend the airdrop deadline to a future date |
-| Recover Unclaimed Tokens | Recover all remaining tokens after the deadline passes |
-| Pause / Unpause Airdrop | Temporarily halt or resume all claims |
+| Recover Tokens | Recover accidentally sent tokens — cannot recover the sale token |
+| Start Sale | Start the token sale period |
+| Finalize Sale | Close the sale and distribute ETH or enable refunds |
+| Pause / Unpause Sale | Temporarily halt or resume all purchases |
 
-### UPDATE MERKLE ROOT
+### FINALIZE SALE
 
-When a client wants to add new wallets to the whitelist:
-1. Update `whitelist.json` with new addresses and amounts
-2. Run `node scripts/generate-merkle.js` to get a new Merkle root and `proofs.json`
-3. Paste the new Merkle root into the Update Merkle Root field
-4. Update `proofs.json` in the dashboard and redeploy
-
-### RECOVER UNCLAIMED TOKENS
-
-After the claim deadline passes, the admin can recover all remaining unclaimed tokens back to their wallet. The Recover Tokens button is disabled until the deadline has passed and grays out once the contract balance reaches zero.
+After the sale period ends or the hard cap is reached the admin can finalize the sale. If the soft cap was reached all raised ETH is sent to the admin wallet. If the soft cap was not reached ETH stays in the contract and buyers can claim refunds. A warning message appears when the sale ends without reaching the soft cap so the admin knows what to expect before finalizing.
 
 ### PAUSE / UNPAUSE
 
-The airdrop can be paused at any time to temporarily halt all claims. This is useful when updating the whitelist or responding to an emergency. The button turns green when paused to resume, and amber when active to pause.
+The sale can be paused at any time to temporarily halt all purchases. Vesting claims and refund claims remain available while paused. The button turns green when paused to resume and amber when active to pause.
 
 ### TRANSACTION FEEDBACK
 
@@ -109,15 +142,14 @@ Every action triggers a color-coded status bar with a loading spinner:
 
 | Action | Status Color |
 |--------|-------------|
-| Claiming Tokens | Lime Green |
-| Updating Merkle Root | Electric Purple |
-| Updating Deadline | Electric Purple |
-| Recovering Tokens | Dark Red |
-| Pausing / Unpausing | Amber |
+| Buying Tokens | Royal Blue |
+| Claiming Tokens | Royal Blue |
+| Claiming Refund | Orange |
+| Admin Actions | Royal Blue |
 | Success | Bright Green |
 | Error | Red |
 
-On success, a clickable Etherscan link appears for immediate transaction verification.
+On success a clickable Etherscan link appears for immediate transaction verification.
 
 ### ERROR HANDLING
 
@@ -125,12 +157,19 @@ User-friendly error messages are displayed for common failure cases:
 
 - Transaction rejected in MetaMask
 - Insufficient funds
-- Airdrop claim period has ended
-- Wallet has already claimed
-- Invalid Merkle proof
-- Airdrop has not ended yet
-- No tokens to recover
-- Deadline must be in the future
+- Wallet not on the whitelist
+- Below minimum contribution
+- Exceeds maximum contribution
+- Purchase would exceed the hard cap
+- Sale has not started yet
+- Sale has ended
+- Sale has been finalized
+- Soft cap not reached — refund available
+- No tokens purchased
+- No tokens available to claim yet
+- No contribution found
+- Refund already claimed
+- Sale not finalized yet
 - General transaction failure
 
 
@@ -157,19 +196,8 @@ src/
     index.js
     proofs.json
     contracts/
-        TokenAirdrop.json
+        TokenCrowdsale.json
         sepolia.json
-
-merkle/
-    whitelist.json
-    proofs.json
-    merkle-root.json
-
-scripts/
-    generate-merkle.js
-    deploy-token.js
-    deploy-airdrop.js
-    fund-airdrop.js
 
 public/
     index.html
@@ -185,14 +213,6 @@ Contains all wallet connection logic, contract interaction, and UI rendering.
 
 Contains the Merkle proof for every whitelisted wallet address. Bundled into the dashboard at build time. The dashboard automatically looks up the connected wallet's proof — users never interact with proofs directly.
 
-### MERKLE FOLDER
-
-Contains the whitelist input file, generated proofs, and Merkle root used during deployment and updates.
-
-### SCRIPTS
-
-Contains the Merkle tree generation script and deployment scripts.
-
 ### ENV
 
 Contains the Alchemy RPC URL used for all read operations.
@@ -203,8 +223,8 @@ Contains the Alchemy RPC URL used for all read operations.
 ### CLONE THE REPOSITORY:
 
 ```bash
-git clone https://github.com/Ktredway0128/erc20-airdrop-dashboard
-cd erc20-airdrop-dashboard
+git clone https://github.com/Ktredway0128/erc20-crowdsale-dashboard
+cd erc20-crowdsale-dashboard
 ```
 
 ### INSTALL DEPENDENCIES:
@@ -230,23 +250,23 @@ REACT_APP_ALCHEMY_URL=YOUR_SEPOLIA_ALCHEMY_URL
 
 This value allows the dashboard to:
 
-- Read airdrop data directly from the blockchain via Alchemy
+- Read sale data directly from the blockchain via Alchemy
 - Bypass MetaMask's RPC for all read operations
 
 
 ## MERKLE TREE WORKFLOW
 
-The airdrop uses a Merkle tree to verify eligibility without storing all addresses on-chain.
+The crowdsale uses a Merkle tree to verify buyer eligibility without storing all addresses on-chain.
 
 ### STEP 1 — Define the whitelist:
 
-Edit `merkle/whitelist.json` with wallet addresses and token amounts:
+Edit the WHITELISTED_ADDRESSES array in `scripts/generate-merkle.js`:
 
-```json
-[
-    { "address": "0xAbc...", "amount": "500" },
-    { "address": "0xDef...", "amount": "1000" }
-]
+```javascript
+const WHITELISTED_ADDRESSES = [
+    "0xAbc...",
+    "0xDef...",
+];
 ```
 
 ### STEP 2 — Generate the Merkle tree:
@@ -255,17 +275,17 @@ Edit `merkle/whitelist.json` with wallet addresses and token amounts:
 node scripts/generate-merkle.js
 ```
 
-This outputs `merkle/merkle-root.json` and `merkle/proofs.json`.
+This outputs the Merkle root to the console and writes `proofs.json` directly to `src/proofs.json`.
 
-### STEP 3 — Deploy the contract:
+### STEP 3 — Deploy the contract with the generated Merkle root:
 
 ```bash
-npx hardhat run scripts/deploy-airdrop.js --network sepolia
+npx hardhat run scripts/deploy-crowdsale.js --network sepolia
 ```
 
-### STEP 4 — Copy proofs to the dashboard:
+### STEP 4 — The proofs.json is already in place:
 
-Copy `merkle/proofs.json` into `src/proofs.json` and redeploy the dashboard.
+The generate-merkle script writes directly to the dashboard src folder — no manual copy step needed.
 
 
 ## HOW TO USE
@@ -277,29 +297,43 @@ Copy `merkle/proofs.json` into `src/proofs.json` and redeploy the dashboard.
 3. Click **Connect Wallet**
 4. Approve the connection in MetaMask
 
-### CLAIMING YOUR AIRDROP (Eligible Wallet)
+### BUYING TOKENS (Whitelisted Wallet)
 
-1. Connect with an eligible wallet
-2. Your allocation and time remaining will display automatically
-3. Click **Claim X STK**
-4. Confirm the transaction in MetaMask
-5. Your tokens will appear in your wallet after confirmation
+1. Connect with a whitelisted wallet during an active sale
+2. Enter an ETH amount between the minimum and maximum contribution
+3. Click **Buy Tokens**
+4. Confirm the single transaction in MetaMask
+5. Your My Position card will appear showing your purchased tokens and vesting details
 
-### UPDATING THE WHITELIST (Admin Only)
+### CLAIMING TOKENS (After Sale Finalization)
 
-1. Add new addresses to `merkle/whitelist.json`
-2. Run `node scripts/generate-merkle.js`
-3. Pause the airdrop in the Admin Panel
-4. Paste the new Merkle root into **Update Merkle Root** and confirm
-5. Copy new `merkle/proofs.json` into `src/proofs.json` and redeploy the dashboard
-6. Unpause the airdrop
+1. Wait for the sale to be finalized and your cliff period to expire
+2. Connect with your buyer wallet
+3. Click **Claim Tokens** to claim all currently vested tokens
+4. Come back periodically to claim more as additional tokens vest
 
-### RECOVERING TOKENS (Admin Only)
+### CLAIMING A REFUND (If Soft Cap Not Reached)
 
-1. Wait for the claim deadline to pass
+1. Wait for the sale to be finalized
+2. Connect with your buyer wallet
+3. If the soft cap was not reached a refund button will appear showing your ETH amount
+4. Click **Claim Refund** and confirm in MetaMask
+5. Your full ETH contribution is returned to your wallet
+
+### STARTING THE SALE (Admin Only)
+
+1. Connect with the admin wallet
+2. Confirm the contract is funded with enough tokens to cover the hard cap
+3. Click **Start Sale** in the Admin Panel
+4. The sale period begins immediately and runs for the configured duration
+
+### FINALIZING THE SALE (Admin Only)
+
+1. Wait for the sale period to end or the hard cap to be reached
 2. Connect with the admin wallet
-3. Click **Recover Tokens** — all remaining tokens are sent to the admin wallet
-4. The button automatically grays out once the contract balance reaches zero
+3. Click **Finalize Sale** in the Admin Panel
+4. If the soft cap was reached ETH is sent to the admin wallet
+5. If not buyers can now claim refunds
 
 
 ## PROVIDER ARCHITECTURE
@@ -319,11 +353,11 @@ This separation ensures reads are fast and reliable while writes are always sign
 | Contract | Address | Etherscan |
 |----------|---------|-----------|
 | SampleToken | `0x036150039c33b1645080a9c913f96D4c65ccca48` | [View on Etherscan](https://sepolia.etherscan.io/address/0x036150039c33b1645080a9c913f96D4c65ccca48#code) |
-| TokenAirdrop | `0x1e79DE344A8B99CAF74E60dc1bD7cCE26e9f5524` | [View on Etherscan](https://sepolia.etherscan.io/address/0x1e79DE344A8B99CAF74E60dc1bD7cCE26e9f5524#code) |
+| TokenCrowdsale | `0xb19f657E2CB2ea593a348285230D3827c85Ae3c5` | [View on Etherscan](https://sepolia.etherscan.io/address/0xb19f657E2CB2ea593a348285230D3827c85Ae3c5#code) |
 
-Deployed: 2026-03-19
+Deployed: 2026-04-11
 
-Merkle Root: `0x4b5c2800591b44919b0eadb6c6e42d649e0694a805266ae22df72091daafe0c6`
+Merkle Root: `0xf42831cc5ba4f7f3a25fed4059bb72a512f55cd08312864b2d7a05a94d25532e`
 
 
 ## EXAMPLE TOKEN CONFIGURATION
@@ -332,8 +366,14 @@ Example parameters used with this dashboard:
 
 - Token Name: Sample Token
 - Token Symbol: STK
-- Maximum Supply: 1,000,000 tokens
-- Initial Supply: 100,000 tokens
+- Rate: 1000 STK per ETH
+- Hard Cap: 10 ETH
+- Soft Cap: 5 ETH
+- Min Contribution: 0.1 ETH
+- Max Contribution: 2 ETH
+- Sale Duration: 7 days
+- Cliff Period: 30 days
+- Vesting Duration: 180 days
 
 
 ## SECURITY PRACTICES
@@ -345,38 +385,40 @@ The dashboard enforces security at two levels:
 - Network check prevents connection on wrong chain
 - Input validation prevents invalid transactions
 - Merkle proofs are verified on-chain — the dashboard cannot fabricate eligibility
+- Whitelist check hides the buy interface from non-whitelisted wallets
 
 **Contract Level**
 - All role checks are enforced by the smart contract
 - The UI is a convenience layer — the contract is the source of truth
 - No transaction can bypass the contract's access control
-- Double claim protection prevents any wallet from claiming more than once
-- Merkle proof verification ensures only whitelisted wallets can claim
+- Hard cap enforcement prevents over-raising
+- Soft cap protection ensures buyers get refunds on failed raises
+- Purchaser vesting prevents immediate token dumping after the sale
 
 
 ## EXAMPLE USE CASES
 
 This dashboard architecture can support many types of projects:
 
-- Community token airdrops for early users and contributors
-- DAO governance token distribution
-- Startup equity token launches
-- Game economy token distributions
-- DeFi protocol token distributions
-- Loyalty rewards programs
+- Public or private token sale fundraising
+- Whitelist-gated presales for early supporters
+- Community token launches with fair contribution limits
+- DAO treasury funding rounds
+- DeFi protocol token distributions with built-in vesting
+- Game economy token launches
 
 
 ## FUTURE ENHANCEMENTS
 
-This dashboard serves as the third frontend layer in a larger Web3 infrastructure package.
+This dashboard serves as the fifth frontend layer in a larger Web3 infrastructure package.
 
 Possible upgrades include:
 
 - IPFS-hosted proofs for very large whitelists
-- Active claimant list for admins
-- Claim analytics and reporting
-- Multi-wallet admin management
+- Buyer analytics and reporting for admins
+- Multi-round sale support
 - Mainnet deployment
+- Governance dashboard integration
 
 
 ## AUTHOR

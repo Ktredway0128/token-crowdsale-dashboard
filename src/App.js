@@ -152,8 +152,8 @@ function App() {
       }
 
       const chainId = await window.ethereum.request({ method: 'eth_chainId' });
-      if (chainId !== '0x7a69') {
-        setStatus('Please switch MetaMask to Hardhat localhost network.');
+      if (chainId !== '0xaa36a7') {
+        setStatus('Please switch MetaMask to Sepolia network.');
         setStatusStyle(STATUS_COLORS.error);
         return;
       }
@@ -164,10 +164,13 @@ function App() {
       const _signer  = metaMaskProvider.getSigner();
       const _account = await _signer.getAddress();
 
-      const localProvider = new ethers.providers.JsonRpcProvider('http://127.0.0.1:8545');
+      const alchemyProvider = new ethers.providers.JsonRpcProvider(
+        process.env.REACT_APP_ALCHEMY_URL,
+        { name: 'sepolia', chainId: 11155111 }
+      );
 
       const _contract     = new ethers.Contract(CROWDSALE_ADDRESS, ABI, _signer);
-      const _readContract = new ethers.Contract(CROWDSALE_ADDRESS, ABI, localProvider);
+      const _readContract = new ethers.Contract(CROWDSALE_ADDRESS, ABI, alchemyProvider);
 
       setContract(_contract);
       setReadContract(_readContract);
@@ -546,7 +549,7 @@ function App() {
               {isLoading && <Spinner />}
               <span>{status}</span>
               {txHash && !isLoading && (
-                <a href={`http://localhost:8545`}
+                <a href={`https://sepolia.etherscan.io/tx/${txHash}`}
                   target="_blank" rel="noopener noreferrer"
                   style={{ color: '#fff', textDecoration: 'underline', marginLeft: '8px', fontWeight: 'bold' }}>
                   Transaction Confirmed ↗
@@ -567,7 +570,7 @@ function App() {
                 Connect your wallet to participate in the token sale
               </p>
               <p className="text-sm uppercase tracking-widest" style={{ color: '#64748b' }}>
-                Make sure you're on the Hardhat localhost network
+                Make sure you're on the Sepolia test network
               </p>
             </div>
           ) : (
