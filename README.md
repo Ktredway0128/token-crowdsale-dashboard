@@ -1,4 +1,4 @@
-# ERC-20 TOKEN CROWDSALE DASHBOARD
+# TOKEN CROWDSALE DASHBOARD
 
 [![Verified on Etherscan](https://img.shields.io/badge/Etherscan-Verified-brightgreen)](https://sepolia.etherscan.io/address/0xb19f657E2CB2ea593a348285230D3827c85Ae3c5#code)
 
@@ -223,8 +223,8 @@ Contains the Alchemy RPC URL used for all read operations.
 ### CLONE THE REPOSITORY:
 
 ```bash
-git clone https://github.com/Ktredway0128/erc20-crowdsale-dashboard
-cd erc20-crowdsale-dashboard
+git clone https://github.com/Ktredway0128/token-crowdsale-dashboard
+cd token-crowdsale-dashboard
 ```
 
 ### INSTALL DEPENDENCIES:
