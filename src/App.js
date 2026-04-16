@@ -2,23 +2,16 @@ import { useState, useEffect } from 'react';
 import { ethers } from 'ethers';
 import './App.css';
 import TokenCrowdsaleABI from './contracts/TokenCrowdsale.json';
-import localDeployment from './contracts/sepolia.json';
-import proofs from './proofs.json';
+import sepoliaDeployment from './contracts/sepolia.json';
+import sepoliaProofs from './proofs.json';
+import localProofs from './proofs-local.json';
 
+const ADDRESSES = {
+  '0xaa36a7': sepoliaDeployment.TokenCrowdsale.address,
+  '0x7a69':   '0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512',
+};
 
-const CROWDSALE_ADDRESS = localDeployment.TokenCrowdsale.address;
 const ABI = TokenCrowdsaleABI.abi;
-
-const getProofForAddress = (address) => {
-  if (!address) return null;
-  return proofs[address.toLowerCase()] || null;
-};
-
-const isWhitelisted = (address) => {
-  if (!address) return false;
-  return proofs[address.toLowerCase()] !== undefined;
-};
-
 
 const STATUS_COLORS = {
   buy:      { backgroundColor: '#1d4ed8', color: '#fff' },
@@ -71,67 +64,82 @@ function Spinner() {
 }
 
 function App() {
-  const [contract,        setContract]        = useState(null);
-  const [readContract,    setReadContract]    = useState(null);
-  const [account,         setAccount]         = useState(null);
-  const [isAdmin,         setIsAdmin]         = useState(false);
-  const [isPaused,        setIsPaused]        = useState(false);
+  // Wallet / connection
+  const [contract,       setContract]       = useState(null);
+  const [readContract,   setReadContract]   = useState(null);
+  const [account,        setAccount]        = useState(null);
+  const [chainId,        setChainId]        = useState(null);
+  const [crowdsaleAddress, setCrowdsaleAddress] = useState(null);
+  const [isAdmin,        setIsAdmin]        = useState(false);
+  const [isPaused,       setIsPaused]       = useState(false);
 
   // Sale state
-  const [saleStarted,           setSaleStarted]               = useState(false);
-  const [saleFinalized,         setSaleFinalized]             = useState(false);
-  const [softCapReached,        setSoftCapReached]            = useState(false);
-  const [hardCapReached,        setHardCapReached]            = useState(false);
-  const [totalRaised,           setTotalRaised]               = useState('0');
-  const [totalTokensSold,       setTotalTokensSold]           = useState('0');
-  const [hardCap,               setHardCap]                   = useState('0');
-  const [softCap,               setSoftCap]                   = useState('0');
-  const [tokenPool,             setTokenPool]                 = useState('0');
-  const [rate,                  setRate]                      = useState('0');
-  const [minContribution,       setMinContribution]           = useState('0');
-  const [maxContribution,       setMaxContribution]           = useState('0');
-  const [saleEnd,               setSaleEnd]                   = useState('0');
-  const [vestingDuration,       setVestingDuration]           = useState('0');
-  const [cliffDuration,         setCliffDuration]             = useState('0');
-  const [currentBlockTimestamp, setCurrentBlockTimestamp]     = useState(0);
-  const [saleDuration,          setSaleDuration]              = useState('0');
-
-
+  const [saleStarted,           setSaleStarted]           = useState(false);
+  const [saleFinalized,         setSaleFinalized]         = useState(false);
+  const [softCapReached,        setSoftCapReached]        = useState(false);
+  const [hardCapReached,        setHardCapReached]        = useState(false);
+  const [totalRaised,           setTotalRaised]           = useState('0');
+  const [totalTokensSold,       setTotalTokensSold]       = useState('0');
+  const [hardCap,               setHardCap]               = useState('0');
+  const [softCap,               setSoftCap]               = useState('0');
+  const [tokenPool,             setTokenPool]             = useState('0');
+  const [rate,                  setRate]                  = useState('0');
+  const [minContribution,       setMinContribution]       = useState('0');
+  const [maxContribution,       setMaxContribution]       = useState('0');
+  const [saleEnd,               setSaleEnd]               = useState('0');
+  const [vestingDuration,       setVestingDuration]       = useState('0');
+  const [cliffDuration,         setCliffDuration]         = useState('0');
+  const [currentBlockTimestamp, setCurrentBlockTimestamp] = useState(0);
+  const [saleDuration,          setSaleDuration]          = useState('0');
 
   // User state
-  const [myContribution,    setMyContribution]       = useState('0');
-  const [myTokensPurchased, setMyTokensPurchased]    = useState('0');
-  const [myClaimable,       setMyClaimable]          = useState('0');
-  const [myRefundAmount,    setMyRefundAmount]       = useState('0');
-  const [refundClaimed,     setRefundClaimed]        = useState(false);
-  const [whitelisted,       setWhitelisted]          = useState(false);
-  const [myTokensClaimed,   setMyTokensClaimed]      = useState('0');
-  const [recoverToken,      setRecoverToken]         = useState('');
-  const [recoverAmount,     setRecoverAmount]        = useState('');
-
-
-
+  const [myContribution,    setMyContribution]    = useState('0');
+  const [myTokensPurchased, setMyTokensPurchased] = useState('0');
+  const [myClaimable,       setMyClaimable]       = useState('0');
+  const [myRefundAmount,    setMyRefundAmount]    = useState('0');
+  const [refundClaimed,     setRefundClaimed]     = useState(false);
+  const [whitelisted,       setWhitelisted]       = useState(false);
+  const [myTokensClaimed,   setMyTokensClaimed]   = useState('0');
+  const [recoverToken,      setRecoverToken]      = useState('');
+  const [recoverAmount,     setRecoverAmount]     = useState('');
 
   // User inputs
-  const [buyAmount,         setBuyAmount]           = useState('');
+  const [buyAmount, setBuyAmount] = useState('');
 
   // Status
-  const [status,            setStatus]              = useState('');
-  const [statusStyle,       setStatusStyle]         = useState(STATUS_COLORS.default);
-  const [isLoading,         setIsLoading]           = useState(false);
-  const [txHash,            setTxHash]              = useState('');
+  const [status,      setStatus]      = useState('');
+  const [statusStyle, setStatusStyle] = useState(STATUS_COLORS.default);
+  const [isLoading,   setIsLoading]   = useState(false);
+  const [txHash,      setTxHash]      = useState('');
 
   // Countdown
-  const [countdown,         setCountdown]           = useState('');
+  const [countdown, setCountdown] = useState('');
+
+  // ─────────────────────────────────────────
+  // Derived — active proofs based on network
+  // ─────────────────────────────────────────
+
+  const activeProofs = chainId === '0x7a69' ? localProofs : sepoliaProofs;
+
+  const getProofForAddress = (address) => {
+    if (!address) return null;
+    return activeProofs[address.toLowerCase()] || null;
+  };
+
+  const isWhitelistedAddress = (address) => {
+    if (!address) return false;
+    return activeProofs[address.toLowerCase()] !== undefined;
+  };
+
+  // ─────────────────────────────────────────
+  // Countdown
+  // ─────────────────────────────────────────
 
   useEffect(() => {
     if (!saleEnd || saleEnd === '0') return;
     const tick = () => {
       const diff = Number(saleEnd) - Math.floor(Date.now() / 1000);
-      if (diff <= 0) {
-        setCountdown('Sale has ended');
-        return;
-      }
+      if (diff <= 0) { setCountdown('Sale has ended'); return; }
       const days    = Math.floor(diff / 86400);
       const hours   = Math.floor((diff % 86400) / 3600);
       const minutes = Math.floor((diff % 3600) / 60);
@@ -143,70 +151,11 @@ function App() {
     return () => clearInterval(interval);
   }, [saleEnd]);
 
-  const connectWallet = async () => {
-    try {
-      if (!window.ethereum) {
-        setStatus('MetaMask not found. Please install it.');
-        setStatusStyle(STATUS_COLORS.error);
-        return;
-      }
+  // ─────────────────────────────────────────
+  // loadDashboardData
+  // ─────────────────────────────────────────
 
-      const chainId = await window.ethereum.request({ method: 'eth_chainId' });
-      if (chainId !== '0xaa36a7') {
-        setStatus('Please switch MetaMask to Sepolia network.');
-        setStatusStyle(STATUS_COLORS.error);
-        return;
-      }
-
-      await window.ethereum.request({ method: 'eth_requestAccounts' });
-
-      const metaMaskProvider = new ethers.providers.Web3Provider(window.ethereum);
-      const _signer  = metaMaskProvider.getSigner();
-      const _account = await _signer.getAddress();
-
-      const alchemyProvider = new ethers.providers.JsonRpcProvider(
-        process.env.REACT_APP_ALCHEMY_URL,
-        { name: 'sepolia', chainId: 11155111 }
-      );
-
-      const _contract     = new ethers.Contract(CROWDSALE_ADDRESS, ABI, _signer);
-      const _readContract = new ethers.Contract(CROWDSALE_ADDRESS, ABI, alchemyProvider);
-
-      setContract(_contract);
-      setReadContract(_readContract);
-      setAccount(_account);
-
-      await loadDashboardData(_readContract, _account);
-    } catch (err) {
-      setStatus('Error connecting wallet: ' + err.message);
-      setStatusStyle(STATUS_COLORS.error);
-    }
-  };
-
-  useEffect(() => {
-    if (!window.ethereum) return;
-    const handleAccountChange = async (accounts) => {
-      setStatus('');
-      setTxHash('');
-      if (accounts.length === 0) {
-        setAccount(null);
-        setContract(null);
-        setReadContract(null);
-        setMyContribution('0');
-        setMyTokensPurchased('0');
-        setMyClaimable('0');
-        setMyRefundAmount('0');
-        setWhitelisted(false);
-      } else {
-        await connectWallet();
-      }
-    };
-    window.ethereum.on('accountsChanged', handleAccountChange);
-    return () => window.ethereum.removeListener('accountsChanged', handleAccountChange);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const loadDashboardData = async (_contract, _account) => {
+  const loadDashboardData = async (_contract, _account, _chainId) => {
     try {
       const ADMIN_ROLE = await _contract.ADMIN_ROLE();
       const adminCheck = await _contract.hasRole(ADMIN_ROLE, _account);
@@ -233,8 +182,6 @@ function App() {
       const block            = await _contract.provider.getBlock('latest');
       const _saleDuration    = await _contract.saleDuration();
 
-
-
       setSaleStarted(_saleStarted);
       setSaleFinalized(_saleFinalized);
       setSoftCapReached(_softCapReached);
@@ -253,14 +200,12 @@ function App() {
       setCurrentBlockTimestamp(block.timestamp);
       setSaleDuration(_saleDuration.toString());
 
-
       const _myContribution    = await _contract.contributions(_account);
       const _myTokensPurchased = await _contract.tokensPurchased(_account);
       const _myClaimable       = await _contract.getClaimableAmount(_account);
       const _myRefundAmount    = await _contract.getRefundAmount(_account);
-      const _myTokensClaimed = await _contract.tokensClaimed(_account);
+      const _myTokensClaimed   = await _contract.tokensClaimed(_account);
       const _refundClaimed     = await _contract.refundClaimed(_account);
-      
 
       setMyContribution(ethers.utils.formatEther(_myContribution));
       setMyTokensPurchased(ethers.utils.formatUnits(_myTokensPurchased, 18));
@@ -268,7 +213,9 @@ function App() {
       setMyRefundAmount(ethers.utils.formatEther(_myRefundAmount));
       setMyTokensClaimed(ethers.utils.formatUnits(_myTokensClaimed, 18));
       setRefundClaimed(_refundClaimed);
-      setWhitelisted(isWhitelisted(_account));
+      
+      const _activeProofs = _chainId === '0x7a69' ? localProofs : sepoliaProofs;
+      setWhitelisted(_account && _activeProofs[_account.toLowerCase()] !== undefined);
 
     } catch (err) {
       setStatus('Error loading data: ' + err.message);
@@ -276,15 +223,110 @@ function App() {
     }
   };
 
+  // ─────────────────────────────────────────
+  // connectWallet
+  // ─────────────────────────────────────────
+
+  const connectWallet = async () => {
+    try {
+      if (!window.ethereum) {
+        setStatus('MetaMask not found. Please install it.');
+        setStatusStyle(STATUS_COLORS.error);
+        return;
+      }
+
+      const _chainId = await window.ethereum.request({ method: 'eth_chainId' });
+
+      if (_chainId !== '0xaa36a7' && _chainId !== '0x7a69') {
+        setStatus('Please switch MetaMask to Sepolia or Localhost 8545.');
+        setStatusStyle(STATUS_COLORS.error);
+        return;
+      }
+
+      const _crowdsaleAddress = ADDRESSES[_chainId];
+      if (!_crowdsaleAddress) {
+        setStatus('No deployment found for this network.');
+        setStatusStyle(STATUS_COLORS.error);
+        return;
+      }
+
+      await window.ethereum.request({ method: 'eth_requestAccounts' });
+
+      const metaMaskProvider = new ethers.providers.Web3Provider(window.ethereum);
+      const _signer          = metaMaskProvider.getSigner();
+      const _account         = await _signer.getAddress();
+
+      const isLocalhost = _chainId === '0x7a69';
+      const rpcProvider = isLocalhost
+        ? new ethers.providers.JsonRpcProvider('http://127.0.0.1:8545')
+        : new ethers.providers.JsonRpcProvider(
+            process.env.REACT_APP_ALCHEMY_URL,
+            { name: 'sepolia', chainId: 11155111 }
+          );
+
+      const _contract     = new ethers.Contract(_crowdsaleAddress, ABI, _signer);
+      const _readContract = new ethers.Contract(_crowdsaleAddress, ABI, rpcProvider);
+
+      setContract(_contract);
+      setReadContract(_readContract);
+      setAccount(_account);
+      setChainId(_chainId);
+      setCrowdsaleAddress(_crowdsaleAddress);
+
+      await loadDashboardData(_readContract, _account, _chainId);
+
+    } catch (err) {
+      setStatus('Error connecting wallet: ' + err.message);
+      setStatusStyle(STATUS_COLORS.error);
+    }
+  };
+
+  // ─────────────────────────────────────────
+  // Account change listener
+  // ─────────────────────────────────────────
+
+  useEffect(() => {
+    if (!window.ethereum) return;
+    const handleAccountChange = async (accounts) => {
+      setStatus('');
+      setTxHash('');
+      if (accounts.length === 0) {
+        setAccount(null);
+        setContract(null);
+        setReadContract(null);
+        setChainId(null);
+        setCrowdsaleAddress(null);
+        setMyContribution('0');
+        setMyTokensPurchased('0');
+        setMyClaimable('0');
+        setMyRefundAmount('0');
+        setWhitelisted(false);
+        setIsAdmin(false);
+        setIsPaused(false);
+      } else {
+        await connectWallet();
+      }
+    };
+    window.ethereum.on('accountsChanged', handleAccountChange);
+    return () => window.ethereum.removeListener('accountsChanged', handleAccountChange);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ─────────────────────────────────────────
+  // Refresh
+  // ─────────────────────────────────────────
+
   const handleRefresh = async () => {
     if (!readContract || !account) return;
     setStatus('Refreshing...');
     setStatusStyle(STATUS_COLORS.default);
-    await loadDashboardData(readContract, account);
+    await loadDashboardData(readContract, account, chainId);
     setStatus('');
   };
 
-  // ===== USER FUNCTIONS =====
+  // ─────────────────────────────────────────
+  // User functions
+  // ─────────────────────────────────────────
 
   const handleBuyTokens = async () => {
     if (!buyAmount || Number(buyAmount) <= 0) {
@@ -293,18 +335,15 @@ function App() {
       return;
     }
     try {
-      setStatus('Purchasing tokens...');
-      setStatusStyle(STATUS_COLORS.buy);
-      setIsLoading(true);
-
       const proof = getProofForAddress(account);
       if (!proof) {
         setStatus('Your wallet is not on the whitelist.');
         setStatusStyle(STATUS_COLORS.error);
-        setIsLoading(false);
         return;
       }
-
+      setStatus('Purchasing tokens...');
+      setStatusStyle(STATUS_COLORS.buy);
+      setIsLoading(true);
       const ethAmount = ethers.utils.parseEther(buyAmount);
       const tx = await contract.buyTokens(proof, { value: ethAmount });
       await tx.wait();
@@ -313,7 +352,7 @@ function App() {
       setTxHash(tx.hash);
       setStatus('Tokens purchased successfully!');
       setStatusStyle(STATUS_COLORS.success);
-      await loadDashboardData(readContract, account);
+      await loadDashboardData(readContract, account, chainId);
       setBuyAmount('');
     } catch (err) {
       setIsLoading(false);
@@ -335,7 +374,7 @@ function App() {
       setTxHash(tx.hash);
       setStatus('Tokens claimed successfully!');
       setStatusStyle(STATUS_COLORS.success);
-      await loadDashboardData(readContract, account);
+      await loadDashboardData(readContract, account, chainId);
     } catch (err) {
       setIsLoading(false);
       setTxHash('');
@@ -356,7 +395,7 @@ function App() {
       setTxHash(tx.hash);
       setStatus('Refund claimed successfully!');
       setStatusStyle(STATUS_COLORS.success);
-      await loadDashboardData(readContract, account);
+      await loadDashboardData(readContract, account, chainId);
     } catch (err) {
       setIsLoading(false);
       setTxHash('');
@@ -365,7 +404,9 @@ function App() {
     }
   };
 
-  // ===== ADMIN FUNCTIONS =====
+  // ─────────────────────────────────────────
+  // Admin functions
+  // ─────────────────────────────────────────
 
   const handleStartSale = async () => {
     try {
@@ -379,7 +420,7 @@ function App() {
       setTxHash(tx.hash);
       setStatus('Sale started successfully!');
       setStatusStyle(STATUS_COLORS.success);
-      await loadDashboardData(readContract, account);
+      await loadDashboardData(readContract, account, chainId);
     } catch (err) {
       setIsLoading(false);
       setTxHash('');
@@ -400,7 +441,7 @@ function App() {
       setTxHash(tx.hash);
       setStatus('Sale finalized successfully!');
       setStatusStyle(STATUS_COLORS.success);
-      await loadDashboardData(readContract, account);
+      await loadDashboardData(readContract, account, chainId);
     } catch (err) {
       setIsLoading(false);
       setTxHash('');
@@ -421,7 +462,7 @@ function App() {
       setTxHash(tx.hash);
       setStatus(isPaused ? 'Sale unpaused!' : 'Sale paused!');
       setStatusStyle(STATUS_COLORS.success);
-      await loadDashboardData(readContract, account);
+      await loadDashboardData(readContract, account, chainId);
     } catch (err) {
       setIsLoading(false);
       setTxHash('');
@@ -452,6 +493,7 @@ function App() {
       setStatusStyle(STATUS_COLORS.success);
       setRecoverToken('');
       setRecoverAmount('');
+      await loadDashboardData(readContract, account, chainId);
     } catch (err) {
       setIsLoading(false);
       setTxHash('');
@@ -459,6 +501,10 @@ function App() {
       setStatusStyle(STATUS_COLORS.error);
     }
   };
+
+  // ─────────────────────────────────────────
+  // Helpers
+  // ─────────────────────────────────────────
 
   const formatTokens = (amount) =>
     Number(amount).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 4 });
@@ -479,14 +525,17 @@ function App() {
     return `${days} days`;
   };
 
-  const saleIsActive = () => {
-    return saleStarted && !saleFinalized && Number(saleEnd) > currentBlockTimestamp;
-};
+  const saleIsActive = () =>
+    saleStarted && !saleFinalized && Number(saleEnd) > currentBlockTimestamp;
 
   const progressPct = () => {
     if (!hardCap || hardCap === '0') return 0;
     return Math.min(100, (Number(totalRaised) / Number(hardCap)) * 100);
   };
+
+  // ─────────────────────────────────────────
+  // Render
+  // ─────────────────────────────────────────
 
   return (
     <div>
@@ -496,16 +545,8 @@ function App() {
         <div className="max-w-5xl mx-auto" style={{ position: 'relative' }}>
 
           {/* TD LOGO */}
-          <img
-            src="/td-logo-justtd.png"
-            alt="Tredway Development"
-            style={{
-              position: 'absolute',
-              top: '0',
-              left: '-110px',
-              height: '35px',
-            }}
-          />
+          <img src="/td-logo-justtd.png" alt="Tredway Development"
+            style={{ position: 'absolute', top: '0', left: '-110px', height: '35px' }} />
 
           {/* HEADER */}
           <div className="flex justify-between items-center mb-6">
@@ -519,9 +560,7 @@ function App() {
             </div>
             {account && (
               <div className="text-right">
-                <button
-                  onClick={handleRefresh}
-                  disabled={isLoading}
+                <button onClick={handleRefresh} disabled={isLoading}
                   className="text-xs font-mono px-3 py-1 rounded-lg mb-2 transition-all hover:opacity-80"
                   style={{
                     backgroundColor: 'rgba(255,255,255,0.5)',
@@ -544,11 +583,11 @@ function App() {
 
           {/* STATUS BAR */}
           {status && (
-            <div className="mb-6 p-4 rounded-xl text-sm font-medium flex items-center gap-2 transition-all"
+            <div className="mb-6 p4 rounded-xl text-sm font-medium flex items-center gap-2 transition-all"
               style={statusStyle}>
               {isLoading && <Spinner />}
               <span>{status}</span>
-              {txHash && !isLoading && (
+              {txHash && !isLoading && chainId === '0xaa36a7' && (
                 <a href={`https://sepolia.etherscan.io/tx/${txHash}`}
                   target="_blank" rel="noopener noreferrer"
                   style={{ color: '#fff', textDecoration: 'underline', marginLeft: '8px', fontWeight: 'bold' }}>
@@ -570,7 +609,7 @@ function App() {
                 Connect your wallet to participate in the token sale
               </p>
               <p className="text-sm uppercase tracking-widest" style={{ color: '#64748b' }}>
-                Make sure you're on the Sepolia test network
+                Make sure you're on the Sepolia test network or Localhost 8545
               </p>
             </div>
           ) : (
@@ -628,18 +667,12 @@ function App() {
                   </div>
                 </div>
 
-                {/* PROGRESS BAR */}
                 <div style={{ marginBottom: '8px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
                     <p className="text-xs uppercase tracking-wide" style={{ color: '#64748b' }}>Raise Progress</p>
                     <p className="text-xs font-semibold" style={{ color: '#0f4c5c' }}>{progressPct().toFixed(1)}%</p>
                   </div>
-                  <div style={{
-                    height: '8px',
-                    borderRadius: '9999px',
-                    backgroundColor: 'rgba(15,76,92,0.12)',
-                    overflow: 'hidden',
-                  }}>
+                  <div style={{ height: '8px', borderRadius: '9999px', backgroundColor: 'rgba(15,76,92,0.12)', overflow: 'hidden' }}>
                     <div style={{
                       height: '100%',
                       width: `${progressPct()}%`,
@@ -649,7 +682,7 @@ function App() {
                     }} />
                   </div>
                 </div>
-                
+
                 {!saleIsActive() && saleStarted && !saleFinalized && Number(totalRaised) < Number(softCap) && (
                   <p className="text-xs mt-2" style={{ color: '#dc2626' }}>
                     ⚠️ Soft cap was not reached. Finalizing will enable refunds for all buyers.
@@ -683,26 +716,18 @@ function App() {
                   borderLeft: '4px solid #1d4ed8',
                 }}>
                 <div className="grid grid-cols-5 gap-4">
-                  <div>
-                    <p className="text-xs uppercase tracking-wide mb-1" style={{ color: '#64748b' }}>Sale Duration</p>
-                    <p className="text-sm font-bold" style={{ color: '#0f4c5c' }}>{formatDuration(saleDuration)}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs uppercase tracking-wide mb-1" style={{ color: '#64748b' }}>Min Contribution</p>
-                    <p className="text-sm font-bold" style={{ color: '#0f4c5c' }}>{formatETH(minContribution)} ETH</p>
-                  </div>
-                  <div>
-                    <p className="text-xs uppercase tracking-wide mb-1" style={{ color: '#64748b' }}>Max Contribution</p>
-                    <p className="text-sm font-bold" style={{ color: '#0f4c5c' }}>{formatETH(maxContribution)} ETH</p>
-                  </div>
-                  <div>
-                    <p className="text-xs uppercase tracking-wide mb-1" style={{ color: '#64748b' }}>Cliff Period</p>
-                    <p className="text-sm font-bold" style={{ color: '#0f4c5c' }}>{formatDuration(cliffDuration)}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs uppercase tracking-wide mb-1" style={{ color: '#64748b' }}>Vesting Duration</p>
-                    <p className="text-sm font-bold" style={{ color: '#0f4c5c' }}>{formatDuration(vestingDuration)}</p>
-                  </div>
+                  {[
+                    { label: 'Sale Duration',    value: formatDuration(saleDuration) },
+                    { label: 'Min Contribution', value: formatETH(minContribution) + ' ETH' },
+                    { label: 'Max Contribution', value: formatETH(maxContribution) + ' ETH' },
+                    { label: 'Cliff Period',      value: formatDuration(cliffDuration) },
+                    { label: 'Vesting Duration', value: formatDuration(vestingDuration) },
+                  ].map((detail) => (
+                    <div key={detail.label}>
+                      <p className="text-xs uppercase tracking-wide mb-1" style={{ color: '#64748b' }}>{detail.label}</p>
+                      <p className="text-sm font-bold" style={{ color: '#0f4c5c' }}>{detail.value}</p>
+                    </div>
+                  ))}
                 </div>
               </div>
 
@@ -722,17 +747,11 @@ function App() {
                     Min: {formatETH(minContribution)} ETH — Max: {formatETH(maxContribution)} ETH
                   </p>
                   <div className="flex gap-3">
-                    <input
-                      type="number"
-                      placeholder="ETH amount"
-                      value={buyAmount}
+                    <input type="number" placeholder="ETH amount" value={buyAmount}
                       onChange={(e) => setBuyAmount(e.target.value)}
                       className="flex-1 border rounded-xl px-4 py-3 text-sm outline-none"
-                      style={{ borderColor: '#bae6fd', color: '#334155' }}
-                    />
-                    <button
-                      onClick={handleBuyTokens}
-                      disabled={isLoading || isPaused}
+                      style={{ borderColor: '#bae6fd', color: '#334155' }} />
+                    <button onClick={handleBuyTokens} disabled={isLoading || isPaused}
                       className="px-6 py-3 rounded-xl font-semibold text-white transition-all hover:opacity-90 btn-hover"
                       style={{
                         backgroundColor: '#1d4ed8',
@@ -743,9 +762,7 @@ function App() {
                     </button>
                   </div>
                   {isPaused && (
-                    <p className="text-xs mt-2" style={{ color: '#f97316' }}>
-                      ⚠️ Sale is currently paused.
-                    </p>
+                    <p className="text-xs mt-2" style={{ color: '#f97316' }}>⚠️ Sale is currently paused.</p>
                   )}
                 </div>
               )}
@@ -777,70 +794,47 @@ function App() {
                     borderLeft: '4px solid #1d4ed8',
                   }}>
                   <h2 className="text-lg font-bold mb-4" style={{ color: '#0f4c5c' }}>My Position</h2>
-
                   <div className="grid grid-cols-4 gap-4 mb-4">
-                    <div>
-                      <p className="text-xs uppercase tracking-wide" style={{ color: '#64748b' }}>My Contribution</p>
-                      <p className="text-sm font-bold" style={{ color: '#0f4c5c' }}>{formatETH(myContribution)} ETH</p>
-                    </div>
-                    <div>
-                      <p className="text-xs uppercase tracking-wide" style={{ color: '#64748b' }}>Tokens Purchased</p>
-                      <p className="text-sm font-bold" style={{ color: '#0f4c5c' }}>{formatTokens(myTokensPurchased)} STK</p>
-                    </div>
-                    <div>
-                      <p className="text-xs uppercase tracking-wide" style={{ color: '#64748b' }}>Tokens Claimed</p>
-                      <p className="text-sm font-bold" style={{ color: '#0f4c5c' }}>{formatTokens(myTokensClaimed)} STK</p>
-                    </div>
-                    <div>
-                      <p className="text-xs uppercase tracking-wide" style={{ color: '#64748b' }}>Claimable Now</p>
-                      <p className="text-sm font-bold" style={{ color: '#1d4ed8' }}>{formatTokens(myClaimable)} STK</p>
-                    </div>
+                    {[
+                      { label: 'My Contribution',  value: formatETH(myContribution) + ' ETH' },
+                      { label: 'Tokens Purchased', value: formatTokens(myTokensPurchased) + ' STK' },
+                      { label: 'Tokens Claimed',   value: formatTokens(myTokensClaimed) + ' STK' },
+                      { label: 'Claimable Now',    value: formatTokens(myClaimable) + ' STK' },
+                    ].map((item) => (
+                      <div key={item.label}>
+                        <p className="text-xs uppercase tracking-wide" style={{ color: '#64748b' }}>{item.label}</p>
+                        <p className="text-sm font-bold" style={{ color: item.label === 'Claimable Now' ? '#1d4ed8' : '#0f4c5c' }}>{item.value}</p>
+                      </div>
+                    ))}
                   </div>
 
                   <div className="rounded-xl p-3 mb-4"
-                    style={{
-                      backgroundColor: 'rgba(255,255,255,0.4)',
-                      border: '1px solid rgba(255,255,255,0.6)',
-                    }}>
+                    style={{ backgroundColor: 'rgba(255,255,255,0.4)', border: '1px solid rgba(255,255,255,0.6)' }}>
                     <p className="text-xs" style={{ color: '#64748b' }}>
-                      Your tokens vest over <strong style={{ color: '#0f4c5c' }}>{formatDuration(vestingDuration)}</strong> with 
-                      a <strong style={{ color: '#0f4c5c' }}>{formatDuration(cliffDuration)}</strong> cliff from your purchase date. 
+                      Your tokens vest over <strong style={{ color: '#0f4c5c' }}>{formatDuration(vestingDuration)}</strong> with
+                      a <strong style={{ color: '#0f4c5c' }}>{formatDuration(cliffDuration)}</strong> cliff from your purchase date.
                       No tokens are claimable until the cliff expires. After the cliff, tokens release linearly until fully vested.
                     </p>
                   </div>
 
                   {saleFinalized && !softCapReached && Number(myContribution) > 0 && !refundClaimed && (
-                    <p className="text-sm" style={{ color: '#f97316' }}>
+                    <p className="text-sm mb-3" style={{ color: '#f97316' }}>
                       ⚠️ Soft cap was not reached. You are eligible for a full refund of your ETH contribution.
                     </p>
                   )}
 
-                  {/* CLAIM TOKENS */}
                   {saleFinalized && softCapReached && Number(myClaimable) > 0 && (
-                    <button
-                      onClick={handleClaimTokens}
-                      disabled={isLoading}
+                    <button onClick={handleClaimTokens} disabled={isLoading}
                       className="px-6 py-3 rounded-xl font-semibold text-white transition-all hover:opacity-90 btn-hover mr-3"
-                      style={{
-                        backgroundColor: '#1d4ed8',
-                        opacity: isLoading ? 0.6 : 1,
-                        cursor: isLoading ? 'not-allowed' : 'pointer',
-                      }}>
+                      style={{ backgroundColor: '#1d4ed8', opacity: isLoading ? 0.6 : 1, cursor: isLoading ? 'not-allowed' : 'pointer' }}>
                       Claim Tokens
                     </button>
                   )}
 
-                  {/* CLAIM REFUND */}
                   {saleFinalized && !softCapReached && Number(myRefundAmount) > 0 && !refundClaimed && (
-                    <button
-                      onClick={handleClaimRefund}
-                      disabled={isLoading}
+                    <button onClick={handleClaimRefund} disabled={isLoading}
                       className="px-6 py-3 rounded-xl font-semibold text-white transition-all hover:opacity-90 btn-hover"
-                      style={{
-                        backgroundColor: '#f97316',
-                        opacity: isLoading ? 0.6 : 1,
-                        cursor: isLoading ? 'not-allowed' : 'pointer',
-                      }}>
+                      style={{ backgroundColor: '#f97316', opacity: isLoading ? 0.6 : 1, cursor: isLoading ? 'not-allowed' : 'pointer' }}>
                       Claim Refund — {formatETH(myRefundAmount)} ETH
                     </button>
                   )}
@@ -850,15 +844,11 @@ function App() {
                   )}
 
                   {saleFinalized && softCapReached && Number(myClaimable) === 0 && Number(myTokensClaimed) === 0 && (
-                    <p className="text-sm" style={{ color: '#64748b' }}>
-                      No tokens claimable yet — cliff period has not passed.
-                    </p>
+                    <p className="text-sm" style={{ color: '#64748b' }}>No tokens claimable yet — cliff period has not passed.</p>
                   )}
 
                   {saleFinalized && softCapReached && Number(myClaimable) === 0 && Number(myTokensClaimed) > 0 && (
-                    <p className="text-sm" style={{ color: '#64748b' }}>
-                      Check back as more tokens vest over time.
-                    </p>
+                    <p className="text-sm" style={{ color: '#64748b' }}>Check back as more tokens vest over time.</p>
                   )}
 
                   {!saleFinalized && (
@@ -884,35 +874,19 @@ function App() {
                   {/* RECOVER TOKENS */}
                   <hr style={{ borderColor: 'rgba(15,76,92,0.1)', margin: '0 0 24px 0' }} />
                   <p className="text-sm font-semibold mb-2" style={{ color: '#dc2626' }}>Recover Accidentally Sent Tokens</p>
-                  <p className="text-xs mb-3" style={{ color: '#64748b' }}>
-                    Cannot recover the sale token. Emergency use only.
-                  </p>
+                  <p className="text-xs mb-3" style={{ color: '#64748b' }}>Cannot recover the sale token. Emergency use only.</p>
                   <div className="flex gap-3 mb-8">
-                    <input
-                      type="text"
-                      placeholder="Token contract address (0x...)"
-                      value={recoverToken}
+                    <input type="text" placeholder="Token contract address (0x...)" value={recoverToken}
                       onChange={(e) => setRecoverToken(e.target.value)}
                       className="flex-1 border rounded-xl px-4 py-3 text-sm outline-none"
-                      style={{ borderColor: '#bae6fd', color: '#334155' }}
-                    />
-                    <input
-                      type="number"
-                      placeholder="Amount"
-                      value={recoverAmount}
+                      style={{ borderColor: '#bae6fd', color: '#334155' }} />
+                    <input type="number" placeholder="Amount" value={recoverAmount}
                       onChange={(e) => setRecoverAmount(e.target.value)}
                       className="w-36 border rounded-xl px-4 py-3 text-sm outline-none"
-                      style={{ borderColor: '#bae6fd', color: '#334155' }}
-                    />
-                    <button
-                      onClick={handleRecoverTokens}
-                      disabled={isLoading}
+                      style={{ borderColor: '#bae6fd', color: '#334155' }} />
+                    <button onClick={handleRecoverTokens} disabled={isLoading}
                       className="px-6 py-3 rounded-xl font-semibold text-white transition-all hover:opacity-90 btn-hover"
-                      style={{
-                        backgroundColor: '#dc2626',
-                        opacity: isLoading ? 0.6 : 1,
-                        cursor: isLoading ? 'not-allowed' : 'pointer',
-                      }}>
+                      style={{ backgroundColor: '#dc2626', opacity: isLoading ? 0.6 : 1, cursor: isLoading ? 'not-allowed' : 'pointer' }}>
                       Recover
                     </button>
                   </div>
@@ -925,15 +899,9 @@ function App() {
                       <p className="text-xs mb-3" style={{ color: '#64748b' }}>
                         Starts the token sale. Contract must be funded with enough tokens to cover the hard cap.
                       </p>
-                      <button
-                        onClick={handleStartSale}
-                        disabled={isLoading}
+                      <button onClick={handleStartSale} disabled={isLoading}
                         className="px-6 py-3 rounded-xl font-semibold text-white transition-all hover:opacity-90 btn-hover mb-8"
-                        style={{
-                          backgroundColor: '#1d4ed8',
-                          opacity: isLoading ? 0.6 : 1,
-                          cursor: isLoading ? 'not-allowed' : 'pointer',
-                        }}>
+                        style={{ backgroundColor: '#1d4ed8', opacity: isLoading ? 0.6 : 1, cursor: isLoading ? 'not-allowed' : 'pointer' }}>
                         Start Sale
                       </button>
                       <hr style={{ borderColor: 'rgba(15,76,92,0.1)', margin: '0 0 24px 0' }} />
@@ -945,17 +913,11 @@ function App() {
                     <>
                       <p className="text-sm font-semibold mb-2" style={{ color: '#1d4ed8' }}>Finalize Sale</p>
                       <p className="text-xs mb-3" style={{ color: '#64748b' }}>
-                        Finalizes the sale. If soft cap was reached ETH is sent to admin. If not buyers can claim refunds.
+                        Finalizes the sale. If soft cap was reached ETH is sent to admin. If not, buyers can claim refunds.
                       </p>
-                      <button
-                        onClick={handleFinalizeSale}
-                        disabled={isLoading}
+                      <button onClick={handleFinalizeSale} disabled={isLoading}
                         className="px-6 py-3 rounded-xl font-semibold text-white transition-all hover:opacity-90 btn-hover mb-8"
-                        style={{
-                          backgroundColor: '#1d4ed8',
-                          opacity: isLoading ? 0.6 : 1,
-                          cursor: isLoading ? 'not-allowed' : 'pointer',
-                        }}>
+                        style={{ backgroundColor: '#1d4ed8', opacity: isLoading ? 0.6 : 1, cursor: isLoading ? 'not-allowed' : 'pointer' }}>
                         Finalize Sale
                       </button>
                       <hr style={{ borderColor: 'rgba(15,76,92,0.1)', margin: '0 0 24px 0' }} />
@@ -968,9 +930,7 @@ function App() {
                       {isPaused ? 'Paused' : 'Active'}
                     </span>
                   </p>
-                  <button
-                    onClick={handlePause}
-                    disabled={isLoading}
+                  <button onClick={handlePause} disabled={isLoading}
                     className="px-6 py-3 rounded-xl font-semibold text-white transition-all hover:opacity-90 btn-hover"
                     style={{
                       backgroundColor: isPaused ? '#22c55e' : '#f97316',
@@ -979,7 +939,6 @@ function App() {
                     }}>
                     {isPaused ? 'Unpause Sale' : 'Pause Sale'}
                   </button>
-
                 </div>
               )}
 
@@ -999,7 +958,6 @@ function App() {
               )}
             </>
           )}
-
         </div>
       </div>
     </div>
